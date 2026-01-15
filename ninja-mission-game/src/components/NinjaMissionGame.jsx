@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Skull, Award, Heart, Swords, Star, Cloud, Shield, Lock, Trophy, ArrowLeft, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Skull, Award, Heart, Swords, Star, Cloud, Shield, Lock, Trophy, ArrowLeft, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Hammer } from 'lucide-react';
 
 const NinjaMissionGame = () => {
-  const GRID_SIZE = 25;
+  const GRID_SIZE = 15;
   const [cellSize, setCellSize] = useState(30);
   
   // Dynamic maze generation function
@@ -118,7 +118,7 @@ const NinjaMissionGame = () => {
   };
   
   // Generate targets based on level (gentler for beginners)
-  const generateTargets = (level) => {
+  const generateTargets = (level, maze) => {
     const targets = [];
 
     // Gentler scaling: fewer targets in early levels
@@ -133,7 +133,7 @@ const NinjaMissionGame = () => {
         x = Math.floor(Math.random() * (GRID_SIZE - 4)) + 2;
         y = Math.floor(Math.random() * (GRID_SIZE - 4)) + 2;
         attempts++;
-      } while ((x === 1 && y === 1) && attempts < 50);
+      } while (((x === 1 && y === 1) || maze[y][x] === 1) && attempts < 50);
 
       if (attempts < 50) {
         targets.push({ x, y });
@@ -147,7 +147,7 @@ const NinjaMissionGame = () => {
   const generateLevel = (levelId) => {
     const maze = generateMaze(levelId);
     const soldiers = generateSoldiers(levelId, maze);
-    const targets = generateTargets(levelId);
+    const targets = generateTargets(levelId, maze);
     
     const difficultyNames = ["Easy", "Medium", "Hard", "Expert"];
     const difficulty = difficultyNames[Math.min(Math.floor((levelId - 1) / 3), 3)];
@@ -197,16 +197,24 @@ const NinjaMissionGame = () => {
     ninjaStars: 0,
     sword: 0,
     smokeScreen: 0,
-    hidingCloth: 0
+    hidingCloth: 0,
+    wallBreaker: 0
   });
   const [activePower, setActivePower] = useState(null);
   const [isInvisible, setIsInvisible] = useState(false);
   const [ninjaStarPositions, setNinjaStarPositions] = useState([]);
   const [powerAnimation, setPowerAnimation] = useState(null);
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [brokenWalls, setBrokenWalls] = useState([]);
+  const brokenWallsRef = useRef([]);
+  const [soldiersAttracted, setSoldiersAttracted] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(true);
+  const [audioVolume, setAudioVolume] = useState(0.5);
+  const [showAudioControls, setShowAudioControls] = useState(false);
   const [clouds, setClouds] = useState([]);
 
   const audioContext = useRef(null);
+  const bgMusicRef = useRef(null);
 
   useEffect(() => {
     const updateCellSize = () => {
@@ -273,6 +281,14 @@ const NinjaMissionGame = () => {
     }
     setClouds(cloudArray);
     
+    // Auto-play audio on mount
+    setTimeout(() => {
+      if (bgMusicRef.current) {
+        bgMusicRef.current.volume = 0.5;
+        bgMusicRef.current.play().catch(e => console.log('Auto-play prevented:', e.code));
+      }
+    }, 500);
+    
     return () => {
       if (audioContext.current) {
         audioContext.current.close();
@@ -317,13 +333,119 @@ const NinjaMissionGame = () => {
     });
   };
 
+  const playClickSound = () => {
+    playSound(800, 0.1, 'sine');
+  };
+
   const enableAudio = () => {
+    console.log('enableAudio called');
     if (audioContext.current && audioContext.current.state === 'suspended') {
       audioContext.current.resume();
     }
     setAudioEnabled(true);
     playSound(440, 0.1);
+    
+    // Attempt to play music with delay for state update
+    setTimeout(() => {
+      if (bgMusicRef.current) {
+        console.log('Attempting to play background music...');
+        bgMusicRef.current.volume = 1.0;
+        bgMusicRef.current.currentTime = 0;
+        bgMusicRef.current.muted = false; // Ensure not muted
+        const playPromise = bgMusicRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('✅ Music playing successfully');
+              console.log('Current time:', bgMusicRef.current.currentTime);
+              console.log('Volume:', bgMusicRef.current.volume);
+            })
+            .catch(e => {
+              console.error('❌ Failed to play background music:', e);
+              console.error('Error code:', e.code);
+              // Try again after a short delay
+              setTimeout(() => {
+                if (bgMusicRef.current) {
+                  console.log('Retrying music playback...');
+                  bgMusicRef.current.play().catch(err => console.error('Retry failed:', err));
+                }
+              }, 500);
+            });
+        }
+      } else {
+        console.error('bgMusicRef.current is null');
+      }
+    }, 100);
   };
+
+  // Handle audio play/pause
+  useEffect(() => {
+    if (bgMusicRef.current) {
+      if (isAudioPlaying) {
+        bgMusicRef.current.play().catch(e => console.log('Play failed', e));
+      } else {
+        bgMusicRef.current.pause();
+      }
+    }
+  }, [isAudioPlaying]);
+
+  // Handle volume changes
+  useEffect(() => {
+    if (bgMusicRef.current) {
+      bgMusicRef.current.volume = audioVolume;
+    }
+  }, [audioVolume]);
+
+  useEffect(() => {
+    if (audioEnabled && bgMusicRef.current) {
+      bgMusicRef.current.volume = audioVolume;
+      const playPromise = bgMusicRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => console.log('Background music play failed', e));
+      }
+    } else if (!audioEnabled && bgMusicRef.current) {
+      bgMusicRef.current.pause();
+    }
+  }, [audioEnabled, audioVolume]);
+
+  // Auto-play music on component mount
+  useEffect(() => {
+    const attemptAutoPlay = () => {
+      if (bgMusicRef.current && audioEnabled) {
+        bgMusicRef.current.volume = audioVolume;
+        console.log('🎵 Attempting to auto-play music...');
+        const playPromise = bgMusicRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('🎵 Music auto-started successfully!');
+              setIsAudioPlaying(true);
+            })
+            .catch(err => {
+              console.log('⚠️ Auto-play blocked by browser, waiting for user interaction', err);
+              // Try again on user interaction
+              const handleUserInteraction = () => {
+                const play = bgMusicRef.current?.play();
+                if (play !== undefined) {
+                  play.then(() => {
+                    console.log('🎵 Music started after user interaction');
+                    setIsAudioPlaying(true);
+                    document.removeEventListener('click', handleUserInteraction);
+                    document.removeEventListener('touchstart', handleUserInteraction);
+                  }).catch(e => console.log('Still unable to play', e));
+                }
+              };
+              document.addEventListener('click', handleUserInteraction, { once: true });
+              document.addEventListener('touchstart', handleUserInteraction, { once: true });
+            });
+        }
+      }
+    };
+    
+    // Give audio element time to be ready
+    const timeout = setTimeout(attemptAutoPlay, 500);
+    return () => clearTimeout(timeout);
+  }, [audioEnabled, audioVolume]);
 
   const startLevel = (level) => {
     const levelData = levels.find(l => l.id === level);
@@ -342,11 +464,15 @@ const NinjaMissionGame = () => {
       ninjaStars: 0,
       sword: 0,
       smokeScreen: 0,
-      hidingCloth: 0
+      hidingCloth: 0,
+      wallBreaker: 1
     });
     setIsInvisible(false);
     setNinjaStarPositions([]);
     setPowerAnimation(null);
+    setBrokenWalls([]);
+    brokenWallsRef.current = [];
+    setSoldiersAttracted(false);
   };
 
   const returnToMenu = () => {
@@ -363,6 +489,8 @@ const NinjaMissionGame = () => {
   const isWall = (x, y) => {
     if (!currentLevel) return true;
     if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return true;
+    // Check if wall is broken - if yes, treat as passable
+    if (brokenWallsRef.current.some(bw => bw.x === x && bw.y === y)) return false;
     return currentLevel.maze[y][x] === 1;
   };
 
@@ -437,7 +565,7 @@ const NinjaMissionGame = () => {
         { freq: 784, duration: 0.2, type: 'sine' }
       ]);
       
-      const powerTypes = ['ninjaStars', 'sword', 'smokeScreen', 'hidingCloth'];
+      const powerTypes = ['ninjaStars', 'sword', 'smokeScreen', 'hidingCloth', 'wallBreaker'];
       const randomPower = powerTypes[Math.floor(Math.random() * powerTypes.length)];
       
       setPowerAnimation({ type: randomPower, x: ninja.x, y: ninja.y });
@@ -570,12 +698,42 @@ const NinjaMissionGame = () => {
         setIsInvisible(true);
         setTimeout(() => setIsInvisible(false), 5000);
         break;
+
+      case 'wallBreaker':
+        playSoundSequence([
+          { freq: 150, duration: 0.1, type: 'sawtooth' },
+          { freq: 100, duration: 0.2, type: 'sawtooth' }
+        ]);
+        
+        const adjacentWalls = [
+          { x: ninja.x + 1, y: ninja.y },
+          { x: ninja.x - 1, y: ninja.y },
+          { x: ninja.x, y: ninja.y + 1 },
+          { x: ninja.x, y: ninja.y - 1 }
+        ];
+        
+        const wallsToBreak = adjacentWalls.filter(cell => 
+          currentLevel && currentLevel.maze[cell.y] && currentLevel.maze[cell.y][cell.x] === 1 &&
+          !brokenWallsRef.current.some(bw => bw.x === cell.x && bw.y === cell.y)
+        );
+        
+        if (wallsToBreak.length > 0) {
+          brokenWallsRef.current = [...brokenWallsRef.current, ...wallsToBreak];
+          setBrokenWalls(brokenWallsRef.current);
+          setSoldiersAttracted(true);
+          setTimeout(() => setSoldiersAttracted(false), 10000); // Attract soldiers for 10 seconds
+        }
+        
+        setActivePower('wallBreaker');
+        setTimeout(() => setActivePower(null), 500);
+        break;
     }
   };
 
   useEffect(() => {
     if (gameOver || gameWon || currentScreen !== 'game') return;
 
+    const moveInterval = soldiersAttracted ? 200 : 400;
     const interval = setInterval(() => {
       setSoldiers(prev => prev.map(soldier => {
         if (!soldier.alive) return soldier;
@@ -600,17 +758,12 @@ const NinjaMissionGame = () => {
         } else if (isInvisible) {
           move = validMoves[Math.floor(Math.random() * validMoves.length)];
         } else {
-          const randomChance = Math.random();
-          if (randomChance < 0.3) {
-            move = validMoves[Math.floor(Math.random() * validMoves.length)];
-          } else {
-            const toNinja = validMoves.sort((a, b) => {
-              const distA = Math.abs(soldier.x + a.dx - ninja.x) + Math.abs(soldier.y + a.dy - ninja.y);
-              const distB = Math.abs(soldier.x + b.dx - ninja.x) + Math.abs(soldier.y + b.dy - ninja.y);
-              return distA - distB;
-            });
-            move = toNinja[0];
-          }
+          const toNinja = validMoves.sort((a, b) => {
+            const distA = Math.abs(soldier.x + a.dx - ninja.x) + Math.abs(soldier.y + a.dy - ninja.y);
+            const distB = Math.abs(soldier.x + b.dx - ninja.x) + Math.abs(soldier.y + b.dy - ninja.y);
+            return distA - distB;
+          });
+          move = toNinja[0];
         }
 
         return {
@@ -619,10 +772,10 @@ const NinjaMissionGame = () => {
           y: soldier.y + move.dy
         };
       }));
-    }, 400);
+    }, moveInterval);
 
     return () => clearInterval(interval);
-  }, [ninja, gameOver, gameWon, isInvisible, currentScreen, currentLevel]);
+  }, [ninja, gameOver, gameWon, isInvisible, currentScreen, currentLevel, soldiersAttracted]);
 
   useEffect(() => {
     if (isInvisible || currentScreen !== 'game') return;
@@ -657,6 +810,7 @@ const NinjaMissionGame = () => {
       case 'sword': return <Swords className="w-8 h-8 text-red-400" />;
       case 'smokeScreen': return <Cloud className="w-8 h-8 text-gray-400" />;
       case 'hidingCloth': return <Shield className="w-8 h-8 text-blue-400" />;
+      case 'wallBreaker': return <Hammer className="w-8 h-8 text-orange-400" />;
       default: return null;
     }
   };
@@ -671,26 +825,91 @@ const NinjaMissionGame = () => {
     }
   };
 
-  if (!audioEnabled) {
-    return (
-      <div className="h-screen w-screen bg-gradient-to-b from-cyan-300 via-blue-200 to-green-100 flex items-center justify-center landscape:flex landscape:flex-col landscape:justify-center landscape:items-center">
-        <div className="bg-gradient-to-br from-red-900 via-red-800 to-black p-8 rounded-lg text-center border-4 border-yellow-500 shadow-2xl transform hover:scale-105 transition-transform">
-          <h2 className="text-4xl font-bold text-yellow-400 mb-4 animate-pulse">🥷 NINJA MISSION 🥷</h2>
-          <p className="text-yellow-200 mb-6 text-lg">Prepare for your deadly quest!</p>
-          <button
-            onClick={enableAudio}
-            className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-400 hover:to-red-500 text-black font-bold rounded-lg text-xl transform hover:scale-110 transition-all shadow-lg border-2 border-yellow-300 animate-bounce"
-          >
-            START MISSION 🔊
-          </button>
+  // Render main content based on current state
+  const getMainContent = () => {
+    if (!audioEnabled) {
+      return (
+        <div className="h-screen w-screen bg-gradient-to-b from-cyan-300 via-blue-200 to-green-100 flex items-center justify-center landscape:flex landscape:flex-col landscape:justify-center landscape:items-center">
+          <div className="bg-gradient-to-br from-red-900 via-red-800 to-black p-8 rounded-lg text-center border-4 border-yellow-500 shadow-2xl transform hover:scale-105 transition-transform">
+            <h2 className="text-3xl sm:text-4xl font-bold text-yellow-400 mb-4 animate-pulse">🥷 NINJA MISSION 🥷</h2>
+            <p className="text-yellow-200 mb-6 text-base sm:text-lg">Prepare for your deadly quest!</p>
+            <button
+              onClick={() => { playClickSound(); enableAudio(); }}
+              className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-400 hover:to-red-500 active:scale-95 text-black font-bold rounded-lg text-lg sm:text-xl transform hover:scale-110 transition-all shadow-lg border-2 border-yellow-300 animate-bounce touch-none"
+            >
+              START MISSION 🔊
+            </button>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (currentScreen === 'menu') {
-    return (
-      <div className="h-screen w-screen bg-gradient-to-b from-cyan-300 via-blue-200 to-green-100 overflow-y-auto relative landscape:flex landscape:flex-col landscape:justify-center landscape:items-center p-4">
+    if (currentScreen === 'menu') {
+      return (
+        <div className="h-screen w-screen bg-gradient-to-b from-cyan-300 via-blue-200 to-green-100 overflow-y-auto relative landscape:flex landscape:flex-col landscape:justify-center landscape:items-center p-4">
+        {/* Audio Control Button (Speaker Icon) */}
+        <button
+          onClick={() => { playClickSound(); setShowAudioControls(!showAudioControls); }}
+          className="absolute top-4 right-4 z-30 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white rounded-full shadow-lg border-3 border-blue-400 flex items-center justify-center text-2xl sm:text-3xl transform hover:scale-110 active:scale-95 transition-all animate-pulse"
+        >
+          {isAudioPlaying ? '🔊' : '🔇'}
+        </button>
+
+        {/* Audio Controls Popup */}
+        {showAudioControls && (
+          <div className="absolute top-20 right-4 z-40 bg-gradient-to-br from-gray-900 to-black p-6 rounded-lg border-3 border-blue-400 shadow-2xl w-80"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg">🎵 Audio Control</h3>
+              <button
+                onClick={() => setShowAudioControls(false)}
+                className="text-gray-400 hover:text-white text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Play/Pause Button */}
+              <button
+                onClick={() => { playClickSound(); setIsAudioPlaying(!isAudioPlaying); }}
+                className={`w-full py-3 rounded-lg font-bold text-white transition-all transform hover:scale-105 border-2 ${
+                  isAudioPlaying
+                    ? 'bg-gradient-to-r from-green-600 to-green-700 border-green-400'
+                    : 'bg-gradient-to-r from-red-600 to-red-700 border-red-400'
+                }`}
+              >
+                {isAudioPlaying ? '⏸ Pause Music' : '▶ Play Music'}
+              </button>
+              
+              {/* Volume Control */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-white font-bold">Volume</label>
+                  <span className="text-blue-400 font-bold">{Math.round(audioVolume * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={audioVolume * 100}
+                  onChange={(e) => { playClickSound(); setAudioVolume(e.target.value / 100); }}
+                  className="w-full h-3 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  style={{
+                    background: `linear-gradient(to right, #2563eb 0%, #2563eb ${audioVolume * 100}%, #4b5563 ${audioVolume * 100}%, #4b5563 100%)`
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showAudioControls && (
+          <div 
+            className="fixed inset-0 z-20" 
+            onClick={() => setShowAudioControls(false)}
+          ></div>
+        )}
         {/* Scrolling Background Effects */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Animated Mountains/Background */}
@@ -748,12 +967,12 @@ const NinjaMissionGame = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-red-800 via-red-900 to-black px-12 py-4 rounded-full border-4 border-yellow-500 shadow-2xl mb-8 transform hover:scale-105 transition-transform relative z-10">
-          <h1 className="text-5xl font-bold text-yellow-400 animate-pulse">⚔️ NINJA MISSION ⚔️</h1>
-          <p className="text-center text-yellow-200 text-sm mt-2">Select Your Level</p>
+        <div className="bg-gradient-to-r from-red-800 via-red-900 to-black px-6 sm:px-12 py-3 sm:py-4 rounded-full border-4 border-yellow-500 shadow-2xl mb-6 sm:mb-8 transform hover:scale-105 active:scale-95 transition-transform relative z-10">
+          <h1 className="text-3xl sm:text-5xl font-bold text-yellow-400 animate-pulse">⚔️ NINJA MISSION ⚔️</h1>
+          <p className="text-center text-yellow-200 text-xs sm:text-sm mt-2">Select Your Level</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl relative z-10 landscape:grid-cols-2 landscape:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-4xl relative z-10 landscape:grid-cols-2 landscape:gap-4 sm:landscape:gap-8 px-2 sm:px-0">
           {levels.map((level) => {
             const isLocked = level.id > unlockedLevels;
             const stars = levelStars[level.id] || 0;
@@ -761,29 +980,29 @@ const NinjaMissionGame = () => {
             return (
               <div
                 key={level.id}
-                className={`relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-6 border-4 transform transition-all ${
+                className={`relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-4 sm:p-6 border-4 transform transition-all ${
                   isLocked
                     ? 'border-gray-700 opacity-60 cursor-not-allowed'
-                    : 'border-yellow-600 hover:scale-105 hover:shadow-2xl cursor-pointer'
+                    : 'border-yellow-600 hover:scale-105 hover:shadow-2xl cursor-pointer active:scale-95'
                 }`}
-                onClick={() => !isLocked && startLevel(level.id)}
+                onClick={() => { playClickSound(); !isLocked && startLevel(level.id); }}
               >
                 {isLocked && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg z-10">
-                    <Lock className="w-16 h-16 text-gray-400" />
+                    <Lock className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400" />
                   </div>
                 )}
                 
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-2xl font-bold text-yellow-400">Level {level.id}</h3>
-                  <span className={`text-sm font-bold ${getDifficultyColor(level.difficulty)}`}>
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h3 className="text-xl sm:text-2xl font-bold text-yellow-400">Level {level.id}</h3>
+                  <span className={`text-xs sm:text-sm font-bold ${getDifficultyColor(level.difficulty)}`}>
                     {level.difficulty}
                   </span>
                 </div>
                 
-                <p className="text-white text-lg mb-3">{level.name}</p>
+                <p className="text-white text-base sm:text-lg mb-3">{level.name}</p>
                 
-                <div className="flex items-center justify-between text-gray-300 text-sm mb-3">
+                <div className="flex items-center justify-between text-gray-300 text-xs sm:text-sm mb-3 gap-2 flex-wrap">
                   <div className="flex items-center gap-1">
                     <Skull className="w-4 h-4 text-red-400" />
                     <span>{level.targets.length} Targets</span>
@@ -814,17 +1033,18 @@ const NinjaMissionGame = () => {
         <div className="mt-8 text-center text-gray-800 text-sm font-bold relative z-10 bg-white bg-opacity-80 px-6 py-3 rounded-lg">
           <p>⭐ Complete levels with 3 lives for maximum stars!</p>
         </div>
-      </div>
-    );
-  }
+        </div>
+      );
+    }
 
-  return (
-    <div className="min-h-screen w-screen bg-gradient-to-b from-cyan-300 via-blue-200 to-green-100 overflow-hidden relative">
+    // Game screen
+    return (
+      <div className="min-h-screen w-screen bg-gradient-to-b from-cyan-300 via-blue-200 to-green-100 overflow-hidden relative">
       {/* Game Info - Top */}
       <div className="absolute top-1 sm:top-2 left-1/2 transform -translate-x-1/2 z-20 w-full max-w-4xl px-2 sm:px-4 transition-all duration-300">
         <div className="flex items-center justify-between mb-2 sm:mb-4 gap-2 sm:gap-4 flex-wrap">
           <button
-            onClick={returnToMenu}
+            onClick={() => { playClickSound(); returnToMenu(); }}
             className="flex items-center gap-1 sm:gap-2 bg-gray-800 hover:bg-gray-700 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-bold transition-all transform hover:scale-105 border-2 border-gray-600 text-sm sm:text-base"
           >
             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -834,6 +1054,14 @@ const NinjaMissionGame = () => {
           <div className="bg-gradient-to-r from-red-800 via-red-900 to-black px-3 sm:px-6 py-1 sm:py-2 rounded-full border-2 sm:border-4 border-yellow-500 shadow-2xl">
             <h1 className="text-lg sm:text-2xl font-bold text-yellow-400">Level {currentLevel?.id}: {currentLevel?.name}</h1>
           </div>
+          
+          {/* Audio Control Button (Speaker Icon) */}
+          <button
+            onClick={() => { playClickSound(); setShowAudioControls(!showAudioControls); }}
+            className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white rounded-full shadow-lg border-2 border-blue-400 flex items-center justify-center text-xl sm:text-2xl transform hover:scale-110 active:scale-95 transition-all"
+          >
+            {isAudioPlaying ? '🔊' : '🔇'}
+          </button>
           
           <div className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-bold text-sm sm:text-base ${getDifficultyColor(currentLevel?.difficulty)} bg-black bg-opacity-50 border-2 border-yellow-600`}>
             {currentLevel?.difficulty}
@@ -860,7 +1088,60 @@ const NinjaMissionGame = () => {
         </div>
       </div>
 
-      {/* Maze Container */}
+      {/* Audio Controls Popup */}
+      {showAudioControls && (
+        <div className="fixed top-20 right-4 z-40 bg-gradient-to-br from-gray-900 to-black p-6 rounded-lg border-3 border-blue-400 shadow-2xl w-80">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-white font-bold text-lg">🎵 Audio Control</h3>
+            <button
+              onClick={() => setShowAudioControls(false)}
+              className="text-gray-400 hover:text-white text-xl"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Play/Pause Button */}
+            <button
+              onClick={() => { playClickSound(); setIsAudioPlaying(!isAudioPlaying); }}
+              className={`w-full py-3 rounded-lg font-bold text-white transition-all transform hover:scale-105 border-2 ${
+                isAudioPlaying
+                  ? 'bg-gradient-to-r from-green-600 to-green-700 border-green-400'
+                  : 'bg-gradient-to-r from-red-600 to-red-700 border-red-400'
+              }`}
+            >
+              {isAudioPlaying ? '⏸ Pause Music' : '▶ Play Music'}
+            </button>
+            
+            {/* Volume Control */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-white font-bold">Volume</label>
+                <span className="text-blue-400 font-bold">{Math.round(audioVolume * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={audioVolume * 100}
+                onChange={(e) => { playClickSound(); setAudioVolume(e.target.value / 100); }}
+                className="w-full h-3 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                style={{
+                  background: `linear-gradient(to right, #2563eb 0%, #2563eb ${audioVolume * 100}%, #4b5563 ${audioVolume * 100}%, #4b5563 100%)`
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAudioControls && (
+        <div 
+          className="fixed inset-0 z-20" 
+          onClick={() => setShowAudioControls(false)}
+        ></div>
+      )}
       <div className="flex flex-col justify-center items-center min-h-screen p-2 sm:p-4 pt-16 sm:pt-20 transition-all duration-300">
         {/* Maze */}
         <div className="relative mb-8 sm:mb-12 transition-all duration-300">
@@ -870,7 +1151,7 @@ const NinjaMissionGame = () => {
               width: GRID_SIZE * cellSize, 
               height: GRID_SIZE * cellSize,
               borderColor: '#8B4513',
-              background: 'linear-gradient(135deg, #1e3a8a 0%, #0f766e 100%)',
+              background: '255, 228, 181)',
               maxWidth: '95vw',
               maxHeight: '70vh'
             }}
@@ -879,7 +1160,7 @@ const NinjaMissionGame = () => {
           >
             {currentLevel && currentLevel.maze.map((row, y) =>
               row.map((cell, x) =>
-                cell === 1 ? (
+                cell === 1 && !brokenWallsRef.current.some(bw => bw.x === x && bw.y === y) ? (
                   <div
                     key={`${x}-${y}`}
                     className="absolute"
@@ -901,7 +1182,7 @@ const NinjaMissionGame = () => {
             {targets.map((target, i) => (
               <div
                 key={i}
-                className="absolute flex items-center justify-center animate-pulse"
+                className="absolute flex items-center justify-center animate-bounce"
                 style={{
                   left: target.x * cellSize,
                   top: target.y * cellSize,
@@ -909,7 +1190,7 @@ const NinjaMissionGame = () => {
                   height: cellSize
                 }}
               >
-                <Skull className="w-4 h-4 text-red-600" />
+                <img src="treasure chest1.png" alt="treasure" style={{width: '100%', height: '100%'}} />
               </div>
             ))}
 
@@ -955,43 +1236,33 @@ const NinjaMissionGame = () => {
                     top: soldier.y * cellSize,
                     width: cellSize,
                     height: cellSize,
-                    opacity: soldier.confused ? 0.6 : 1
+                    opacity: soldier.confused ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: `${cellSize * 0.8}px`
                   }}
                 >
-                  <svg viewBox="0 0 24 24" className="w-full h-full">
-                    <circle cx="12" cy="8" r="3" fill={soldier.color} />
-                    <rect x="9" y="11" width="6" height="8" rx="1" fill={soldier.color} />
-                    <rect x="6" y="12" width="3" height="5" rx="1" fill={soldier.color} />
-                    <rect x="15" y="12" width="3" height="5" rx="1" fill={soldier.color} />
-                    <rect x="9" y="19" width="2.5" height="4" rx="1" fill={soldier.color} />
-                    <rect x="12.5" y="19" width="2.5" height="4" rx="1" fill={soldier.color} />
-                    <circle cx="12" cy="7" r="3.5" fill="none" stroke="#333" strokeWidth="0.5" />
-                  </svg>
+                  💂🏻‍♂️
                 </div>
               )
             ))}
 
             <div
-              className={`absolute transition-all duration-100 ${activePower === 'sword' ? 'scale-125 animate-pulse' : ''}`}
+              className={`absolute transition-all duration-100 animate-bounce ${activePower === 'sword' ? 'scale-125 animate-pulse' : ''}`}
               style={{
                 left: ninja.x * cellSize,
                 top: ninja.y * cellSize,
                 width: cellSize,
                 height: cellSize,
-                opacity: isInvisible ? 0.3 : 1
+                opacity: isInvisible ? 0.3 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: `${cellSize * 0.8}px`
               }}
             >
-              <svg viewBox="0 0 24 24" className="w-full h-full">
-                <circle cx="12" cy="8" r="3" fill="#000" />
-                <rect x="9" y="11" width="6" height="8" rx="1" fill="#000" />
-                <rect x="6" y="12" width="3" height="5" rx="1" fill="#000" />
-                <rect x="15" y="12" width="3" height="5" rx="1" fill="#000" />
-                <rect x="9" y="19" width="2.5" height="4" rx="1" fill="#000" />
-                <rect x="12.5" y="19" width="2.5" height="4" rx="1" fill="#000" />
-                <circle cx="10.5" cy="8" r="0.8" fill="#ff0000" />
-                <circle cx="13.5" cy="8" r="0.8" fill="#ff0000" />
-                <rect x="8" y="5.5" width="8" height="1" fill="#333" />
-              </svg>
+              🥷🏻
             </div>
 
             {(gameOver || gameWon) && (
@@ -1014,20 +1285,20 @@ const NinjaMissionGame = () => {
                 <p className="text-2xl text-white mb-6">Score: {score}</p>
                 <div className="flex gap-4">
                   <button
-                    onClick={returnToMenu}
+                    onClick={() => { playClickSound(); returnToMenu(); }}
                     className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-bold transition-transform hover:scale-110 border-2 border-gray-500"
                   >
                     Menu
                   </button>
                   <button
-                    onClick={resetGame}
+                    onClick={() => { playClickSound(); resetGame(); }}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-transform hover:scale-110 border-2 border-blue-400"
                   >
                     Retry
                   </button>
                   {gameWon && currentLevel && currentLevel.id < levels.length && (
                     <button
-                      onClick={() => startLevel(currentLevel.id + 1)}
+                      onClick={() => { playClickSound(); startLevel(currentLevel.id + 1); }}
                       className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition-transform hover:scale-110 border-2 border-green-400"
                     >
                       Next Level
@@ -1040,11 +1311,11 @@ const NinjaMissionGame = () => {
         </div>
 
         {/* Controls Below Maze */}
-        <div className="flex justify-center items-center gap-6 sm:gap-12 flex-wrap max-w-6xl transition-all duration-300">
+        <div className="flex justify-between items-center gap-6 sm:gap-12 w-full -mx-2 sm:-mx-4 transition-all duration-300">
           {/* Power Buttons - Left Side */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 transition-all duration-300">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 transition-all duration-300">
             <button
-              onClick={() => usePower('ninjaStars')}
+              onClick={() => { playClickSound(); usePower('ninjaStars'); }}
               disabled={powers.ninjaStars === 0}
               className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
                 powers.ninjaStars > 0 
@@ -1056,7 +1327,7 @@ const NinjaMissionGame = () => {
             </button>
             
             <button
-              onClick={() => usePower('sword')}
+              onClick={() => { playClickSound(); usePower('sword'); }}
               disabled={powers.sword === 0}
               className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
                 powers.sword > 0 
@@ -1068,7 +1339,19 @@ const NinjaMissionGame = () => {
             </button>
             
             <button
-              onClick={() => usePower('smokeScreen')}
+              onClick={() => { playClickSound(); usePower('wallBreaker'); }}
+              disabled={powers.wallBreaker === 0}
+              className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
+                powers.wallBreaker > 0 
+                  ? 'bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 hover:scale-110 shadow-lg border-2 border-green-300 cursor-pointer active:scale-95' 
+                  : 'bg-gray-800 border-2 border-gray-600 cursor-not-allowed opacity-50'
+              } text-white font-bold touch-manipulation flex items-center justify-center`}
+            >
+              <Hammer className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+            
+            <button
+              onClick={() => { playClickSound(); usePower('smokeScreen'); }}
               disabled={powers.smokeScreen === 0}
               className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
                 powers.smokeScreen > 0 
@@ -1080,7 +1363,7 @@ const NinjaMissionGame = () => {
             </button>
             
             <button
-              onClick={() => usePower('hidingCloth')}
+              onClick={() => { playClickSound(); usePower('hidingCloth'); }}
               disabled={powers.hidingCloth === 0}
               className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
                 powers.hidingCloth > 0 
@@ -1096,7 +1379,7 @@ const NinjaMissionGame = () => {
           <div className="grid grid-cols-3 gap-1 sm:gap-2 transition-all duration-300">
             <div></div>
             <button
-              onClick={() => moveNinja(0, -1)}
+              onClick={() => { playClickSound(); moveNinja(0, -1); }}
               className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
               <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -1104,29 +1387,56 @@ const NinjaMissionGame = () => {
             <div></div>
             
             <button
-              onClick={() => moveNinja(-1, 0)}
+              onClick={() => { playClickSound(); moveNinja(-1, 0); }}
               className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
               <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             
             <button
-              onClick={() => moveNinja(0, 1)}
+              onClick={() => { playClickSound(); moveNinja(0, 1); }}
               className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
               <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             
             <button
-              onClick={() => moveNinja(1, 0)}
+              onClick={() => { playClickSound(); moveNinja(1, 0); }}
               className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
               <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
+
         </div>
       </div>
-    </div>
+      </div>
+    );
+  };
+
+  // Return wrapper with persistent audio element
+  return (
+    <>
+      {getMainContent()}
+      <audio 
+        ref={bgMusicRef} 
+        src="/bg.mp3"
+        autoPlay
+        loop 
+        preload="auto"
+        muted={false}
+        onLoadedData={() => {
+          console.log('🎵 Audio loaded successfully');
+          if (audioEnabled && isAudioPlaying && bgMusicRef.current) {
+            bgMusicRef.current.volume = audioVolume;
+            bgMusicRef.current.play().catch(e => console.log('Play on load failed:', e));
+          }
+        }}
+        onError={(e) => console.error('Audio load error:', e)}
+        onPlay={() => console.log('✓ Audio is now playing')}
+        onPause={() => console.log('⊘ Audio paused')}
+      />
+    </>
   );
 };
 
