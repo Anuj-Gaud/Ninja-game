@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Skull, Award, Heart, Swords, Star, Cloud, Shield, Lock, Trophy, ArrowLeft, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Hammer } from 'lucide-react';
+import { Award, Heart, Swords, Star, Cloud, Shield, Lock, Trophy, ArrowLeft, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Hammer } from 'lucide-react';
 
 const NinjaMissionGame = () => {
   const GRID_SIZE = 15;
@@ -1004,7 +1004,7 @@ const NinjaMissionGame = () => {
                 
                 <div className="flex items-center justify-between text-gray-300 text-xs sm:text-sm mb-3 gap-2 flex-wrap">
                   <div className="flex items-center gap-1">
-                    <Skull className="w-4 h-4 text-red-400" />
+                    <img src="treasure chest1.png" alt="treasure" className="w-4 h-4" />
                     <span>{level.targets.length} Targets</span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1074,7 +1074,7 @@ const NinjaMissionGame = () => {
             <span className="font-bold text-sm sm:text-xl text-yellow-300">{score}</span>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 bg-black bg-opacity-50 px-2 sm:px-4 py-1 sm:py-2 rounded-full border-2 border-red-500 transform hover:scale-110 transition-all">
-            <Skull className="w-4 h-4 sm:w-6 sm:h-6 text-red-400 animate-pulse" />
+            <img src="treasure chest1.png" alt="treasure" className="w-4 h-4 sm:w-6 sm:h-6 animate-pulse" />
             <span className="font-bold text-sm sm:text-xl text-red-300">{targets.length}</span>
           </div>
           <div className="flex items-center gap-1 bg-black bg-opacity-50 px-2 sm:px-4 py-1 sm:py-2 rounded-full border-2 border-pink-500 transform hover:scale-110 transition-all">
