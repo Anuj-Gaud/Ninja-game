@@ -242,16 +242,16 @@ const NinjaMissionGame = () => {
       let optimalSize;
       if (viewportWidth < 480) {
         // Mobile phones
-        optimalSize = Math.max(16, Math.min(maxSize, 24));
+        optimalSize = Math.max(20, Math.min(maxSize, 28));
       } else if (viewportWidth < 768) {
         // Tablets
-        optimalSize = Math.max(20, Math.min(maxSize, 32));
+        optimalSize = Math.max(28, Math.min(maxSize, 40));
       } else if (viewportWidth < 1024) {
         // Small laptops
-        optimalSize = Math.max(24, Math.min(maxSize, 36));
+        optimalSize = Math.max(32, Math.min(maxSize, 48));
       } else {
         // Large screens
-        optimalSize = Math.max(28, Math.min(maxSize, 40));
+        optimalSize = Math.max(36, Math.min(maxSize, 52));
       }
 
       setCellSize(optimalSize);
@@ -1311,100 +1311,100 @@ const NinjaMissionGame = () => {
         </div>
 
         {/* Controls Below Maze */}
-        <div className="flex justify-between items-center gap-6 sm:gap-12 w-full -mx-2 sm:-mx-4 transition-all duration-300">
+        <div className="flex justify-between items-center gap-8 sm:gap-16 w-full -mx-2 sm:-mx-4 transition-all duration-300">
           {/* Power Buttons - Left Side */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 transition-all duration-300">
+          <div className="grid grid-cols-3 gap-4 sm:gap-6 transition-all duration-300">
             <button
               onClick={() => { playClickSound(); usePower('ninjaStars'); }}
               disabled={powers.ninjaStars === 0}
-              className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
+              className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg transition-all transform ${
                 powers.ninjaStars > 0 
                   ? 'bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 hover:scale-110 shadow-lg border-2 border-green-300 cursor-pointer active:scale-95' 
                   : 'bg-gray-800 border-2 border-gray-600 cursor-not-allowed opacity-50'
               } text-white font-bold touch-manipulation flex items-center justify-center`}
             >
-              <Star className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Star className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             
             <button
               onClick={() => { playClickSound(); usePower('sword'); }}
               disabled={powers.sword === 0}
-              className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
+              className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg transition-all transform ${
                 powers.sword > 0 
                   ? 'bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 hover:scale-110 shadow-lg border-2 border-green-300 cursor-pointer active:scale-95' 
                   : 'bg-gray-800 border-2 border-gray-600 cursor-not-allowed opacity-50'
               } text-white font-bold touch-manipulation flex items-center justify-center`}
             >
-              <Swords className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Swords className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             
             <button
               onClick={() => { playClickSound(); usePower('wallBreaker'); }}
               disabled={powers.wallBreaker === 0}
-              className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
+              className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg transition-all transform ${
                 powers.wallBreaker > 0 
                   ? 'bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 hover:scale-110 shadow-lg border-2 border-green-300 cursor-pointer active:scale-95' 
                   : 'bg-gray-800 border-2 border-gray-600 cursor-not-allowed opacity-50'
               } text-white font-bold touch-manipulation flex items-center justify-center`}
             >
-              <Hammer className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Hammer className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             
             <button
               onClick={() => { playClickSound(); usePower('smokeScreen'); }}
               disabled={powers.smokeScreen === 0}
-              className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
+              className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg transition-all transform ${
                 powers.smokeScreen > 0 
                   ? 'bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 hover:scale-110 shadow-lg border-2 border-green-300 cursor-pointer active:scale-95' 
                   : 'bg-gray-800 border-2 border-gray-600 cursor-not-allowed opacity-50'
               } text-white font-bold touch-manipulation flex items-center justify-center`}
             >
-              <Cloud className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Cloud className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             
             <button
               onClick={() => { playClickSound(); usePower('hidingCloth'); }}
               disabled={powers.hidingCloth === 0}
-              className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all transform ${
+              className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg transition-all transform ${
                 powers.hidingCloth > 0 
                   ? 'bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 hover:scale-110 shadow-lg border-2 border-green-300 cursor-pointer active:scale-95' 
                   : 'bg-gray-800 border-2 border-gray-600 cursor-not-allowed opacity-50'
               } text-white font-bold touch-manipulation flex items-center justify-center`}
             >
-              <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Shield className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
           </div>
 
           {/* Control Arrows - Right Side */}
-          <div className="grid grid-cols-3 gap-1 sm:gap-2 transition-all duration-300">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 transition-all duration-300">
             <div></div>
             <button
               onClick={() => { playClickSound(); moveNinja(0, -1); }}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
+              className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
-              <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ChevronUp className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             <div></div>
             
             <button
               onClick={() => { playClickSound(); moveNinja(-1, 0); }}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
+              className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
-              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             
             <button
               onClick={() => { playClickSound(); moveNinja(0, 1); }}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
+              className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
-              <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ChevronDown className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             
             <button
               onClick={() => { playClickSound(); moveNinja(1, 0); }}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
+              className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white rounded-lg transition-all transform hover:scale-110 shadow-lg border-2 border-green-300 active:scale-95 touch-manipulation flex items-center justify-center"
             >
-              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
           </div>
 
